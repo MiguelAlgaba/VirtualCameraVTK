@@ -11,3 +11,9 @@
 *.lai
 *.la
 *.a
+
+# Ignore build directory
+build
+
+# Ignore temporal files
+*~
