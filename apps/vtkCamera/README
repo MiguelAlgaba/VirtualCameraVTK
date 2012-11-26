@@ -4,10 +4,10 @@ Execution:
 ./Camera Filename(.obj) yaw pitch roll (camera rotation [rad]) tx ty tz (camera translation [cm]) f (focal length [cm] > 0)
 
 # Frontal view
-./Camera <mesh.obj> 0 3.1415 0 0 0 -200 0.2 
+./Camera <mesh.obj> 0 0 0 0 0 -200 0.2
 
 # Right lateral view
-./Camera <mesh.obj> 0 -1.5707 0 -200 0 0 0.2
+./Camera <mesh.obj> 0 1.5707 0 -200 0 0 0.2
 
 # Left lateral view
-./Camera <mesh.obj> 0 1.5707 0 200 0 0 0.2
+./Camera <mesh.obj> 0 -1.5707 0 200 0 0 0.2

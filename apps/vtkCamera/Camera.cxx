@@ -28,12 +28,23 @@ int main(int argc, char *argv[])
     return EXIT_FAILURE;
     }
 
+  // Read the mesh from (.obj) file
   std::string filename = argv[1];
   vtkSmartPointer<vtkOBJReader> reader =
     vtkSmartPointer<vtkOBJReader>::New();
   reader->SetFileName(filename.c_str());
   reader->Update();
 
+  // Create a mapper and actor for the mesh
+  vtkSmartPointer<vtkPolyDataMapper> mapper = 
+    vtkSmartPointer<vtkPolyDataMapper>::New();
+  mapper->SetInputConnection(reader->GetOutputPort());
+ 
+  vtkSmartPointer<vtkActor> actor = 
+    vtkSmartPointer<vtkActor>::New();
+  actor->SetMapper(mapper);
+
+  // Read the extrinsic and intrinsic camera parameters
   std::istringstream ss;  
   double yaw,pitch,roll,tx,ty,tz,focalLength;
   ss.clear(); ss.str(argv[2]); ss >> yaw;         //rad
@@ -47,15 +58,23 @@ int main(int argc, char *argv[])
   std::cout << "camera extrinsic parameters: (" 
             << yaw << "," << pitch << "," << roll << ","
             << tx << "," << ty << "," << tz << ")" << std::endl; 
- 
-  // Create a mapper and actor
-  vtkSmartPointer<vtkPolyDataMapper> mapper = 
-    vtkSmartPointer<vtkPolyDataMapper>::New();
-  mapper->SetInputConnection(reader->GetOutputPort());
- 
-  vtkSmartPointer<vtkActor> actor = 
-    vtkSmartPointer<vtkActor>::New();
-  actor->SetMapper(mapper);
+
+  // Define a rotation matrix to rotate the reference frame 
+  // 
+  //       y                z   
+  //       |               /
+  //       |____x   >>>   /____x
+  //       /              |
+  //     z/               |
+  //                      y
+  //
+  const double refFrameRotationMatrix[]={1.0 , 0.0 , 0.0 , 0.0 ,
+                                         0.0 , -1.0 , 0.0 , 0.0 ,
+                                         0.0 , 0.0 , -1.0 , 0.0 ,
+                                         0.0 , 0.0 , 0.0 , 1.0};
+  vtkSmartPointer<vtkTransform> refFrameRotation = 
+    vtkSmartPointer<vtkTransform>::New();
+  refFrameRotation->SetMatrix(refFrameRotationMatrix);
 
   // Define the camera pose
   double cy,cp,cr,sy,sp,sr;
@@ -68,7 +87,10 @@ int main(int argc, char *argv[])
   vtkSmartPointer<vtkTransform> cameraPose = 
     vtkSmartPointer<vtkTransform>::New();
   cameraPose->SetMatrix(cameraPoseMatrix);
+  cameraPose->Concatenate(refFrameRotation); // Rotate the reference frame
+  cameraPose->PreMultiply();
 
+  // Set the camera position and focal point according to the defined camera pose
   vtkSmartPointer<vtkCamera> camera = 
     vtkSmartPointer<vtkCamera>::New();
   camera->SetPosition(0,0,focalLength);
