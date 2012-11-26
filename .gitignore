@@ -15,5 +15,8 @@
 # Ignore build directory
 build
 
+# Ignore CMakeFiles directory
+CMakeFiles
+
 # Ignore temporal files
 *~

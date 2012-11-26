@@ -81,7 +81,6 @@ int main(int argc, char *argv[])
   renderer->SetActiveCamera(camera);
   renderer->AddActor(axes);
 
- 
   vtkSmartPointer<vtkRenderWindow> renderWindow = 
     vtkSmartPointer<vtkRenderWindow>::New();
   renderWindow->AddRenderer(renderer);
@@ -91,7 +90,7 @@ int main(int argc, char *argv[])
  
   // Add the actor to the scene
   renderer->AddActor(actor);
-  renderer->SetBackground(0,0,0); // Background color white
+  renderer->SetBackground(0,0,0); // Background color black
  
   // Render and interact
   renderWindow->Render();
