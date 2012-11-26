@@ -73,6 +73,7 @@ int main(int argc, char *argv[])
   // Add the world axes
   vtkSmartPointer<vtkAxesActor> axes =
     vtkSmartPointer<vtkAxesActor>::New();
+  axes->SetTotalLength(20.0,20.0,20.0); 	
 
   // Create a renderer, render window, and interactor
   vtkSmartPointer<vtkRenderer> renderer = 
@@ -83,6 +84,7 @@ int main(int argc, char *argv[])
 
   vtkSmartPointer<vtkRenderWindow> renderWindow = 
     vtkSmartPointer<vtkRenderWindow>::New();
+  renderWindow->SetSize(600,600);
   renderWindow->AddRenderer(renderer);
   vtkSmartPointer<vtkRenderWindowInteractor> renderWindowInteractor = 
     vtkSmartPointer<vtkRenderWindowInteractor>::New();
