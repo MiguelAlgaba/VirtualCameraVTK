@@ -93,8 +93,8 @@ int main(int argc, char *argv[])
   // Set the camera position and focal point according to the defined camera pose
   vtkSmartPointer<vtkCamera> camera = 
     vtkSmartPointer<vtkCamera>::New();
-  camera->SetPosition(0,0,focalLength);
-  camera->SetFocalPoint(0,0,0);
+  camera->SetPosition(0,0,0);
+  camera->SetFocalPoint(0,0,-focalLength);
   camera->ApplyTransform(cameraPose);
 
   // Print out the camera configuration to the console
