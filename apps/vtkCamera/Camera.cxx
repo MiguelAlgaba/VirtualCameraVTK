@@ -20,7 +20,6 @@
 #include <string>
 #include <ostream>
 #include <sstream>
-
 #include <vtkSphereSource.h>
 #include "vtkProperty.h" 
 #include <vtkTextActor.h>
@@ -28,7 +27,8 @@
 #include "vtkTextActor3D.h"
 #include "vtkVectorText.h" 
 #include "vtkLinearExtrusionFilter.h"
-
+#include <iostream>
+#include <fstream>
 
 void display3DPointAndIndex(const vtkSmartPointer<vtkRenderer> & renderer,
                             const double x,const double y,const double z,unsigned int pIdx)
@@ -74,10 +74,14 @@ void display3DPointAndIndex(const vtkSmartPointer<vtkRenderer> & renderer,
 
 int main(int argc, char *argv[])
 {
+  std::cout << std::endl << "----------------" << std::endl;
+  std::cout << "VirtualCameraVTK" << std::endl;
+  std::cout << "----------------" << std::endl;
+
   // Parse command line arguments
-  if(argc != 10)
+  if(argc != 11)
     {
-    std::cout << "Usage: " << argv[0] << " Filename(.ply) yaw pitch roll (camera rotation [rad]) tx ty tz (camera translation [cm]) f (focal length [cm] > 0) r (pixel/cm)" << std::endl;
+    std::cout << "Usage: " << argv[0] << " <mesh.ply> (mesh file .ply) yaw pitch roll (camera rotation [rad]) tx ty tz (camera translation [cm]) f (focal length [cm] > 0) r (pixel/cm) indexes (points indexes file name)" << std::endl;
     return EXIT_FAILURE;
     }
 
@@ -87,6 +91,9 @@ int main(int argc, char *argv[])
     vtkSmartPointer<vtkPLYReader>::New();
   reader->SetFileName (filename.c_str());
   reader->Update(); 
+
+  // Read the filename for the point in file
+  std::string pointIndexesFileName = argv[10];
 
   // Create a mapper and actor for the mesh
   vtkSmartPointer<vtkPolyDataMapper> mapper = 
@@ -99,7 +106,8 @@ int main(int argc, char *argv[])
 
   // Get the mesh data
   vtkPolyData* polydata = mapper->GetInput();
-  std::cout << "Number of vertices: " << polydata->GetNumberOfPoints() << std::endl;
+  unsigned int numVertices = polydata->GetNumberOfPoints();
+  std::cout << "Number of vertices: " << numVertices << std::endl;
 
   // Read the extrinsic and intrinsic camera parameters
   std::istringstream ss;  
@@ -113,9 +121,17 @@ int main(int argc, char *argv[])
   ss.clear(); ss.str(argv[8]); ss >> focalLength; //cm
   ss.clear(); ss.str(argv[9]); ss >> ratio;       //ratio pixel/cm
 
-  std::cout << "camera extrinsic parameters: (" 
-            << yaw << "," << pitch << "," << roll << ","
-            << tx << "," << ty << "," << tz << ")" << std::endl; 
+  std::cout << "Camera extrinsic parameters:"<< std::endl;
+  std::cout << "	- yaw   : " << yaw << std::endl; 
+  std::cout << "	- pitch : " << pitch << std::endl; 
+  std::cout << "	- roll  : " << roll << std::endl; 
+  std::cout << "	- tx    : " << tx << std::endl; 
+  std::cout << "	- ty    : " << ty << std::endl; 
+  std::cout << "	- tz    : " << tz << std::endl; 
+  std::cout << "Camera intrinsic parameters:" << std::endl;
+  std::cout << "	- f	: " << focalLength << std::endl;
+  std::cout << "World to image ratio (pixel/cm):" << std::endl;
+  std::cout << "	- r	: " << ratio << std::endl;
 
   // Define a rotation matrix to rotate the reference frame 
   // 
@@ -156,8 +172,8 @@ int main(int argc, char *argv[])
   camera->ApplyTransform(cameraPose);
 
   // Print out the camera configuration to the console
-  std::ostream objOstream (cout.rdbuf());
-  camera->Print(objOstream);
+  //std::ostream objOstream (cout.rdbuf());
+  //camera->Print(objOstream);
 
   // Compute the camera projection matrix (world 3D points to camera 2D points)
   Eigen::Matrix4d inverseCameraPoseMatrix = Eigen::Matrix4d::Identity();
@@ -177,7 +193,7 @@ int main(int argc, char *argv[])
   // Add the world axes
   vtkSmartPointer<vtkAxesActor> axes =
     vtkSmartPointer<vtkAxesActor>::New();
-  axes->SetTotalLength(20.0,20.0,20.0); 	
+  axes->SetTotalLength(10.0,10.0,10.0); 	
 
   // Create a renderer, render window, and interactor
   vtkSmartPointer<vtkRenderer> renderer = 
@@ -198,24 +214,40 @@ int main(int argc, char *argv[])
   renderer->AddActor(actor);
   renderer->SetBackground(0,0,0); // Background color black
 
-  // Print and display the 3D points and their projections on the camera image plane
-  unsigned int numPoints = 1;
-  for(unsigned int pi = 0; pi < numPoints ; pi++)
+  // Read the indexes of a subset of the mesh 3D points. Print and display the selected 3D points
+  // and their projections on the camera image plane. 
+  std::string line;
+  std::ifstream pointIndexesFile (pointIndexesFileName.c_str());
+  if (pointIndexesFile.is_open())
   {
-    // Print out the 3D coordinates of the specified points (by their index)
-    int pIdx = 150;
-    double p[3];
-    polydata->GetPoint(pIdx,p);
-    std::cout << "3D coordinates " << pIdx << " : (" << p[0] << " " << p[1] << " " << p[2] << ")" << std::endl;
+    while ( pointIndexesFile.good() )
+    {
+      // Read the next point index from file
+      getline (pointIndexesFile,line);
+      std::istringstream buffer(line); unsigned int pIdx; buffer >> pIdx; buffer.clear(); 
+
+      if(pIdx<0 || pIdx>=numVertices)
+      {
+        std::cout<<"Invalid point index" << std::endl;
+        return EXIT_FAILURE;
+      }
+
+      // Get the 3D coordinates of the selected point
+      double p[3];
+      polydata->GetPoint(pIdx,p);
+      std::cout << "3D coordinates " << pIdx << " : (" << p[0] << " " << p[1] << " " << p[2] << ")" << std::endl;
     
-    // Display the selected point in 3D
-    display3DPointAndIndex(renderer,p[0],p[1],p[2],pIdx);
+      // Display the selected point in 3D
+      display3DPointAndIndex(renderer,p[0],p[1],p[2],pIdx);
   
-    // Print out the projections of the selected 3D points
-    Eigen::Vector4d h3Dpoint; h3Dpoint(0)=p[0]; h3Dpoint(1)=p[1]; h3Dpoint(2)=p[2]; h3Dpoint(3)=1.0;
-    Eigen::Vector3d h2Dpoint = projectionMatrix*h3Dpoint;
-    std::cout<<"2D projection " << pIdx << " : (" << h2Dpoint(0)/h2Dpoint(2) 
-                                           << " " << h2Dpoint(1)/h2Dpoint(2) << ")" << std::endl;
+      // Print out the projections of the selected 3D points
+      Eigen::Vector4d h3Dpoint; h3Dpoint(0)=p[0]; h3Dpoint(1)=p[1]; h3Dpoint(2)=p[2]; h3Dpoint(3)=1.0;
+      Eigen::Vector3d h2Dpoint = projectionMatrix*h3Dpoint;
+      std::cout<<"2D projection " << pIdx << " : (" << h2Dpoint(0)/h2Dpoint(2) 
+                                           << " " << h2Dpoint(1)/h2Dpoint(2) << ")" << std::endl; 
+
+    }
+    pointIndexesFile.close();
   }
  
   // Render and interact
