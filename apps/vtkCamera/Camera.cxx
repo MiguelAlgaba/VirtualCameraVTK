@@ -29,6 +29,10 @@
 #include "vtkLinearExtrusionFilter.h"
 #include <iostream>
 #include <fstream>
+#include <vtkImageData.h>
+#include <vtkJPEGWriter.h>
+#include <vtkImageCanvasSource2D.h>
+#include <vtkImageCast.h>
 
 void display3DPointAndIndex(const vtkSmartPointer<vtkRenderer> & renderer,
                             const double x,const double y,const double z,unsigned int pIdx)
@@ -79,9 +83,9 @@ int main(int argc, char *argv[])
   std::cout << "----------------" << std::endl;
 
   // Parse command line arguments
-  if(argc != 13)
+  if(argc < 15 || argc > 16)
     {
-    std::cout << "Usage: " << argv[0] << " <mesh.ply> (mesh file .ply) yaw pitch roll (camera rotation [rad]) tx ty tz (camera translation [cm]) f (focal length [cm] > 0) cx (X camera principal point [pixels]) cy (Y camera principal point [pixels]) r (world to image ratio [pixels/cm]) indexes (points indexes file name)" << std::endl;
+    std::cout << "Usage: " << argv[0] << " <mesh.ply> (mesh file .ply) yaw pitch roll (camera rotation [rad]) tx ty tz (camera translation [cm]) f (focal length [cm] > 0) cx (X camera principal point [pixels]) cy (Y camera principal point [pixels]) r (world to image ratio [pixels/cm]) indexes (points indexes file name) width (output image width [pixels]) height (output image height [pixels]) [<output_image.jpg> (output image file name .jpg)]" << std::endl;
     return EXIT_FAILURE;
     }
 
@@ -94,6 +98,17 @@ int main(int argc, char *argv[])
 
   // Read the filename for the point in file
   std::string pointIndexesFileName = argv[12];
+
+  // Read the output image file name
+  std::string outputImageFileName;  
+  if(argc==16)
+  {
+    outputImageFileName = argv[15];
+  }
+  else
+  {
+    outputImageFileName = "output.jpg";
+  }
 
   // Create a mapper and actor for the mesh
   vtkSmartPointer<vtkPolyDataMapper> mapper = 
@@ -121,7 +136,7 @@ int main(int argc, char *argv[])
   ss.clear(); ss.str(argv[8]); ss >> focalLength; //cm
   ss.clear(); ss.str(argv[9]); ss >> cx;          //pixels
   ss.clear(); ss.str(argv[10]); ss >> cy;         //pixels
-  ss.clear(); ss.str(argv[11]); ss >> ratio;       //ratio pixel/cm
+  ss.clear(); ss.str(argv[11]); ss >> ratio;      //ratio pixel/cm
 
   std::cout << "Camera extrinsic parameters:"<< std::endl;
   std::cout << "	- yaw   : " << yaw << " rad" << std::endl; 
@@ -136,6 +151,10 @@ int main(int argc, char *argv[])
   std::cout << "	- cy	: " << cy << " pixels" << std::endl;
   std::cout << "World to image ratio:" << std::endl;
   std::cout << "	- r	: " << ratio << " pixels/cm" << std::endl;
+
+  // Read the output image size
+  int imgWidth;  ss.clear(); ss.str(argv[13]); ss >> imgWidth;  //pixels
+  int imgHeight; ss.clear(); ss.str(argv[14]); ss >> imgHeight; //pixels
 
   // Define a rotation matrix to rotate the reference frame 
   // 
@@ -220,6 +239,17 @@ int main(int argc, char *argv[])
   renderer->AddActor(actor);
   renderer->SetBackground(0,0,0); // Background color black
 
+  // Create a 2D image to project the selected 3D points into
+  int extent[6] = {0, imgWidth-1, 0, imgHeight-1, 0, 0};
+  vtkSmartPointer<vtkImageCanvasSource2D> imageSource =
+      vtkSmartPointer<vtkImageCanvasSource2D>::New();
+  imageSource->SetExtent(extent);
+  imageSource->SetScalarTypeToUnsignedChar();
+  imageSource->SetNumberOfScalarComponents(3);
+  imageSource->SetDrawColor(255,255,255);
+  imageSource->FillBox(0, imgWidth-1, 0, imgHeight-1);
+  imageSource->SetDrawColor(0,0,255);
+
   // Read the indexes of a subset of the mesh 3D points. Print and display the selected 3D points
   // and their projections on the camera image plane. 
   std::string line;
@@ -250,12 +280,31 @@ int main(int argc, char *argv[])
       // Print out the projections of the selected 3D points
       Eigen::Vector4d h3Dpoint; h3Dpoint(0)=p[0]; h3Dpoint(1)=p[1]; h3Dpoint(2)=p[2]; h3Dpoint(3)=1.0;
       Eigen::Vector3d h2Dpoint = projectionMatrix*h3Dpoint;
-      std::cout<<"2D projection " << pIdx << " : (" << h2Dpoint(0)/h2Dpoint(2) 
-                                           << " " << h2Dpoint(1)/h2Dpoint(2) << ")" << std::endl; 
+      double proyX=h2Dpoint(0)/h2Dpoint(2);
+      double proyY=h2Dpoint(1)/h2Dpoint(2);
+      std::cout<<"2D projection " << pIdx << " : (" << proyX 
+                                           << " " << proyY << ")" << std::endl;
 
+      // Draw the projected point into the image
+      imageSource->DrawCircle(proyX,imgHeight-proyY,5);
+      imageSource->DrawPoint(proyX,imgHeight-proyY);
+      imageSource->Update(); 
     }
     pointIndexesFile.close();
   }
+ 
+  // Write the image to file
+  vtkSmartPointer<vtkImageCast> castFilter =
+      vtkSmartPointer<vtkImageCast>::New();
+  castFilter->SetOutputScalarTypeToUnsignedChar ();
+  castFilter->SetInputConnection(imageSource->GetOutputPort());
+  castFilter->Update();
+ 
+  vtkSmartPointer<vtkJPEGWriter> writer =
+    vtkSmartPointer<vtkJPEGWriter>::New();
+  writer->SetFileName(outputImageFileName.c_str());
+  writer->SetInputConnection(castFilter->GetOutputPort());
+  writer->Write();
  
   // Render and interact
   renderWindow->Render();

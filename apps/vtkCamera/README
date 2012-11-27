@@ -1,13 +1,15 @@
 Execution:
 ----------
 
-./Camera Filename(.obj) yaw pitch roll (camera rotation [rad]) tx ty tz (camera translation [cm]) f (focal length [cm] > 0) cx (X camera principal point [pixels]) cy (Y camera principal point [pixels]) r (pixel/cm) indexes (points indexes file name)
+./Camera Filename(.obj) yaw pitch roll (camera rotation [rad]) tx ty tz (camera translation [cm]) f (focal length [cm] > 0) cx (X camera principal point [pixels]) cy (Y camera principal point [pixels]) r (pixel/cm) indexes (points indexes file name) width (output image width [pixels]) height (output image height [pixels]) [<output_image.jpg> (output image file name .jpg)]
 
 # Frontal view (e.g)
-./Camera <mesh.obj> 0 0 0 0 0 -200 0.2 640 480 100 <point_indexes>
+./Camera <mesh.obj> 0 0 0 0 0 -200 3.5 640 480 400 <point_indexes> 1280 960
 
 # Right lateral view (e.g)
-./Camera <mesh.obj> 0 1.5707 0 -200 0 0 0.2 640 480 100 <point_indexes>
+./Camera <mesh.obj> 0 1.5707 0 -200 0 0 3.5 640 480 400 <point_indexes> 1280 960
 
 # Left lateral view (e.g)
-./Camera <mesh.obj> 0 -1.5707 0 200 0 0 0.2 640 480 100 <point_indexes>
+./Camera <mesh.obj> 0 -1.5707 0 200 0 0 3.5 640 480 400 <point_indexes> 1280 960
+
+
