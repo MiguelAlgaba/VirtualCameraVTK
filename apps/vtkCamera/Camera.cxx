@@ -79,9 +79,9 @@ int main(int argc, char *argv[])
   std::cout << "----------------" << std::endl;
 
   // Parse command line arguments
-  if(argc != 11)
+  if(argc != 13)
     {
-    std::cout << "Usage: " << argv[0] << " <mesh.ply> (mesh file .ply) yaw pitch roll (camera rotation [rad]) tx ty tz (camera translation [cm]) f (focal length [cm] > 0) r (pixel/cm) indexes (points indexes file name)" << std::endl;
+    std::cout << "Usage: " << argv[0] << " <mesh.ply> (mesh file .ply) yaw pitch roll (camera rotation [rad]) tx ty tz (camera translation [cm]) f (focal length [cm] > 0) cx (X camera principal point [pixels]) cy (Y camera principal point [pixels]) r (world to image ratio [pixels/cm]) indexes (points indexes file name)" << std::endl;
     return EXIT_FAILURE;
     }
 
@@ -93,7 +93,7 @@ int main(int argc, char *argv[])
   reader->Update(); 
 
   // Read the filename for the point in file
-  std::string pointIndexesFileName = argv[10];
+  std::string pointIndexesFileName = argv[12];
 
   // Create a mapper and actor for the mesh
   vtkSmartPointer<vtkPolyDataMapper> mapper = 
@@ -111,7 +111,7 @@ int main(int argc, char *argv[])
 
   // Read the extrinsic and intrinsic camera parameters
   std::istringstream ss;  
-  double yaw,pitch,roll,tx,ty,tz,focalLength,ratio;
+  double yaw,pitch,roll,tx,ty,tz,focalLength,cx,cy,ratio;
   ss.clear(); ss.str(argv[2]); ss >> yaw;         //rad
   ss.clear(); ss.str(argv[3]); ss >> pitch;       //rad
   ss.clear(); ss.str(argv[4]); ss >> roll;        //rad
@@ -119,19 +119,23 @@ int main(int argc, char *argv[])
   ss.clear(); ss.str(argv[6]); ss >> ty;          //cm
   ss.clear(); ss.str(argv[7]); ss >> tz;          //cm
   ss.clear(); ss.str(argv[8]); ss >> focalLength; //cm
-  ss.clear(); ss.str(argv[9]); ss >> ratio;       //ratio pixel/cm
+  ss.clear(); ss.str(argv[9]); ss >> cx;          //pixels
+  ss.clear(); ss.str(argv[10]); ss >> cy;         //pixels
+  ss.clear(); ss.str(argv[11]); ss >> ratio;       //ratio pixel/cm
 
   std::cout << "Camera extrinsic parameters:"<< std::endl;
-  std::cout << "	- yaw   : " << yaw << std::endl; 
-  std::cout << "	- pitch : " << pitch << std::endl; 
-  std::cout << "	- roll  : " << roll << std::endl; 
-  std::cout << "	- tx    : " << tx << std::endl; 
-  std::cout << "	- ty    : " << ty << std::endl; 
-  std::cout << "	- tz    : " << tz << std::endl; 
+  std::cout << "	- yaw   : " << yaw << " rad" << std::endl; 
+  std::cout << "	- pitch : " << pitch << " rad" << std::endl; 
+  std::cout << "	- roll  : " << roll << " rad" << std::endl; 
+  std::cout << "	- tx    : " << tx << " cm" << std::endl; 
+  std::cout << "	- ty    : " << ty << " cm" << std::endl; 
+  std::cout << "	- tz    : " << tz << " cm" << std::endl; 
   std::cout << "Camera intrinsic parameters:" << std::endl;
-  std::cout << "	- f	: " << focalLength << std::endl;
-  std::cout << "World to image ratio (pixel/cm):" << std::endl;
-  std::cout << "	- r	: " << ratio << std::endl;
+  std::cout << "	- f	: " << focalLength << " cm" << std::endl;
+  std::cout << "	- cx	: " << cx << " pixels" << std::endl;
+  std::cout << "	- cy	: " << cy << " pixels" << std::endl;
+  std::cout << "World to image ratio:" << std::endl;
+  std::cout << "	- r	: " << ratio << " pixels/cm" << std::endl;
 
   // Define a rotation matrix to rotate the reference frame 
   // 
@@ -151,12 +155,12 @@ int main(int argc, char *argv[])
   refFrameRotation->SetMatrix(refFrameRotationMatrix);
 
   // Define the camera pose
-  double cy,cp,cr,sy,sp,sr;
-  cy=cos(yaw); cp=cos(pitch); sy=sin(yaw);
-  sp=sin(pitch);sr=sin(roll); cr=cos(roll);
-  const double cameraPoseMatrix[]={cy*cp , cy*sp*sr-sy*cr , cy*sp*cr+sy*sr , tx ,
-                                   sy*cp , sy*sp*sr+cy*cr , sy*sp*cr-cy*sr , ty ,
-                                   -sp   , cp*sr          , cp*cr          , tz ,
+  double cos_y,cos_p,cos_r,sin_y,sin_p,sin_r;
+  cos_y=cos(yaw); cos_p=cos(pitch); sin_y=sin(yaw);
+  sin_p=sin(pitch);sin_r=sin(roll); cos_r=cos(roll);
+  const double cameraPoseMatrix[]={cos_y*cos_p , cos_y*sin_p*sin_r-sin_y*cos_r , cos_y*sin_p*cos_r+sin_y*sin_r , tx ,
+                                   sin_y*cos_p , sin_y*sin_p*sin_r+cos_y*cos_r , sin_y*sin_p*cos_r-cos_y*sin_r , ty ,
+                                   -sin_p   , cos_p*sin_r          , cos_p*cos_r          , tz ,
                                    0.0   , 0.0            , 0.0            , 1.0};
   vtkSmartPointer<vtkTransform> cameraPose = 
     vtkSmartPointer<vtkTransform>::New();
@@ -188,6 +192,8 @@ int main(int argc, char *argv[])
   Eigen::Matrix<double,3,4> extrinsicCameraMatrix = inverseCameraPoseMatrix.block(0,0,3,4);
   Eigen::Matrix3d intrinsicCameraMatrix = Eigen::Matrix3d::Identity();
   intrinsicCameraMatrix(0,0)=intrinsicCameraMatrix(1,1)=focalLength*ratio;
+  intrinsicCameraMatrix(0,2)=cx;
+  intrinsicCameraMatrix(1,2)=cy;
   Eigen::Matrix<double,3,4> projectionMatrix = intrinsicCameraMatrix*extrinsicCameraMatrix;
 
   // Add the world axes
@@ -220,11 +226,12 @@ int main(int argc, char *argv[])
   std::ifstream pointIndexesFile (pointIndexesFileName.c_str());
   if (pointIndexesFile.is_open())
   {
-    while ( pointIndexesFile.good() )
+    while ( pointIndexesFile.good())
     {
       // Read the next point index from file
       getline (pointIndexesFile,line);
       std::istringstream buffer(line); unsigned int pIdx; buffer >> pIdx; buffer.clear(); 
+      if(pointIndexesFile.eof()){break;}
 
       if(pIdx<0 || pIdx>=numVertices)
       {
