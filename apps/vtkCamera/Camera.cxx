@@ -4,7 +4,7 @@
 #include <vtkRenderWindow.h>
 #include <vtkRenderer.h>
 #include <vtkRenderWindowInteractor.h>
-#include <vtkOBJReader.h>
+#include <vtkPLYReader.h>
 #include <vtkUnstructuredGrid.h>
 #include <vtkCell.h>
 #include <vtkCellArray.h>
@@ -77,16 +77,16 @@ int main(int argc, char *argv[])
   // Parse command line arguments
   if(argc != 10)
     {
-    std::cout << "Usage: " << argv[0] << " Filename(.obj) yaw pitch roll (camera rotation [rad]) tx ty tz (camera translation [cm]) f (focal length [cm] > 0) r (pixel/cm)" << std::endl;
+    std::cout << "Usage: " << argv[0] << " Filename(.ply) yaw pitch roll (camera rotation [rad]) tx ty tz (camera translation [cm]) f (focal length [cm] > 0) r (pixel/cm)" << std::endl;
     return EXIT_FAILURE;
     }
 
-  // Read the mesh from (.obj) file
+  // Read the mesh from (.ply) file
   std::string filename = argv[1];
-  vtkSmartPointer<vtkOBJReader> reader =
-    vtkSmartPointer<vtkOBJReader>::New();
-  reader->SetFileName(filename.c_str());
-  reader->Update();
+  vtkSmartPointer<vtkPLYReader> reader =
+    vtkSmartPointer<vtkPLYReader>::New();
+  reader->SetFileName (filename.c_str());
+  reader->Update(); 
 
   // Create a mapper and actor for the mesh
   vtkSmartPointer<vtkPolyDataMapper> mapper = 
