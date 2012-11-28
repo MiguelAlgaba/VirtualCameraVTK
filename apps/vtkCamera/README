@@ -1,7 +1,7 @@
 Execution:
 ----------
 
-Usage: ./Camera <mesh.ply> yaw pitch roll tx ty tz f cx cy r indexes width height [<output_image.jpg>]
+Usage: ./Camera <mesh.ply> yaw pitch roll tx ty tz f cx cy r indexes points projections camera width height [<output_image.jpg>]
     <mesh.ply>  : mesh file .ply
     yaw         : camera rotation around Z axis [rad]
     pitch       : camera rotation around Y axis [rad]
@@ -14,30 +14,38 @@ Usage: ./Camera <mesh.ply> yaw pitch roll tx ty tz f cx cy r indexes width heigh
     cy          : Y camera principal point [pixels]
     r           : world to image ratio [pixels/cm]
     indexes     : 3D points indexes file name
+    points      : output file with the selected 3D points
+    projections : output file with the 2D projections
+    camera      : output file with the camera parameters
     width       : output image width [pixels]
     height      : output image height [pixels]
     <image.jpg> : output image file name .jpg [optional]
 
 # Frontal view (e.g)
-./Camera <mesh.obj> 0 0 0 0 0 -200 3.5 640 480 400 <point_indexes> 1280 960
+./Camera <mesh.obj> 0 0 0 0 0 -200 3.5 640 480 400 point_indexes_front points3D projections2D_0 camera_0 1280 960
 
 # Right lateral view (e.g)
-./Camera <mesh.obj> 0 1.5707 0 -200 0 0 3.5 640 480 400 <point_indexes> 1280 960
+./Camera <mesh.obj> 0 1.5707 0 -200 0 0 3.5 640 480 400 point_indexes_right points3D projections2D_1 camera_1 1280 960
 
 # Left lateral view (e.g)
-./Camera <mesh.obj> 0 -1.5707 0 200 0 0 3.5 640 480 400 <point_indexes> 1280 960
+./Camera <mesh.obj> 0 -1.5707 0 200 0 0 3.5 640 480 400 point_indexes_left points3D projections2D_2 camera_2 1280 960
 
 Output:
 -------
 
 - An image of the specified size with the 2D projections of the selected 3D points.
-- A text file with the 3D world coordinates of the selected points and their 2D projections onto the image plane. The file has the following structure:
 
-Xi Yi Zi xi yi (one line per point)
- 
-    - World reference frame:  X points right
+- A text file with the 3D world coordinates of the selected points. The file has the following structure:
+  point_index Xi Yi Zi (one line per point)
+     - World reference frame: X points right
                               Y points down
                               Z points forward
+
+- A text file with the 2D projections of the selected 3D points onto the image plane. The file has the following structure:
+  point_index xi yi (one line per point)
     - Camera reference frame: x points right
                               y points down
                               z points forward
+
+- A text file with the camera parameters and image properties. The file has the following structure:
+  yaw pitch roll tx ty tz f cx cy r width height

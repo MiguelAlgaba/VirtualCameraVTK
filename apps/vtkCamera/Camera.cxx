@@ -36,7 +36,7 @@
 
 void printUsage(char *argv[])
 {
-    std::cout << "Usage: " << argv[0] << " <mesh.ply> yaw pitch roll tx ty tz f cx cy r indexes width height [<output_image.jpg>]" << std::endl;
+    std::cout << "Usage: " << argv[0] << " <mesh.ply> yaw pitch roll tx ty tz f cx cy r indexes points projections camera width height [<output_image.jpg>]" << std::endl;
     std::cout << "    <mesh.ply>  : mesh file .ply" << std::endl;
     std::cout << "    yaw         : camera rotation around Z axis [rad]" << std::endl;
     std::cout << "    pitch       : camera rotation around Y axis [rad]" << std::endl;
@@ -48,7 +48,10 @@ void printUsage(char *argv[])
     std::cout << "    cx          : X camera principal point [pixels]" << std::endl;
     std::cout << "    cy          : Y camera principal point [pixels]" << std::endl;
     std::cout << "    r           : world to image ratio [pixels/cm]" << std::endl;  
-    std::cout << "    indexes     : 3D points indexes file name" << std::endl; 
+    std::cout << "    indexes     : 3D points indexes file name" << std::endl;
+    std::cout << "    points      : output file with the selected 3D points" << std::endl;
+    std::cout << "    projections : output file with the 2D projections" << std::endl;
+    std::cout << "    camera      : output file with the camera parameters" << std::endl;   
     std::cout << "    width       : output image width [pixels]" << std::endl;  
     std::cout << "    height      : output image height [pixels]" << std::endl;
     std::cout << "    <image.jpg> : output image file name .jpg [optional]" << std::endl; 
@@ -102,7 +105,7 @@ int main(int argc, char *argv[])
   std::cout << "----------------" << std::endl;
 
   // Parse command line arguments
-  if(argc < 15 || argc > 16)
+  if(argc < 18 || argc > 19)
   {
     printUsage(argv);                                  
     return EXIT_FAILURE;
@@ -120,14 +123,23 @@ int main(int argc, char *argv[])
 
   // Read the output image file name
   std::string outputImageFileName;  
-  if(argc==16)
+  if(argc==19)
   {
-    outputImageFileName = argv[15];
+    outputImageFileName = argv[18];
   }
   else
   {
     outputImageFileName = "output.jpg";
   }
+
+  // Read the filename of the output file for the selected 3D points
+  std::string output3DPointsFileName = argv[13];
+
+  // Read the filename of the output file for the 2D projections
+  std::string outputProjectionsFileName = argv[14];
+
+  // Read the filename of the output file for the camera parameters
+  std::string outputCameraParametersFileName = argv[15];
 
   // Create a mapper and actor for the mesh
   vtkSmartPointer<vtkPolyDataMapper> mapper = 
@@ -172,8 +184,8 @@ int main(int argc, char *argv[])
   std::cout << "	- r	: " << ratio << " pixels/cm" << std::endl;
 
   // Read the output image size
-  int imgWidth;  ss.clear(); ss.str(argv[13]); ss >> imgWidth;  //pixels
-  int imgHeight; ss.clear(); ss.str(argv[14]); ss >> imgHeight; //pixels
+  int imgWidth;  ss.clear(); ss.str(argv[16]); ss >> imgWidth;  //pixels
+  int imgHeight; ss.clear(); ss.str(argv[17]); ss >> imgHeight; //pixels
 
   // Define a rotation matrix to rotate the reference frame 
   // 
@@ -275,10 +287,19 @@ int main(int argc, char *argv[])
   std::ifstream pointIndexesFile (pointIndexesFileName.c_str());
   if (pointIndexesFile.is_open())
   {
-    std::ofstream pointsAndProjections ("points3DAndProjections2D");
-    if (!pointsAndProjections.is_open())
+    //Open a file to save the selected 3D points
+    std::ofstream output3DpointsFile(output3DPointsFileName.c_str());
+    if (!output3DpointsFile.is_open())
     {
-      cout << "Unable to open output file";
+      cout << "Unable to open output file " << output3DPointsFileName << std::endl;
+      return EXIT_FAILURE;
+    }
+
+    //Open a file to save the projections of the selected 3D points
+    std::ofstream outputProjectionsFile(outputProjectionsFileName.c_str());
+    if (!outputProjectionsFile.is_open())
+    {
+      cout << "Unable to open output file " << outputProjectionsFileName << std::endl;
       return EXIT_FAILURE;
     }
 
@@ -317,13 +338,27 @@ int main(int argc, char *argv[])
       imageSource->Update(); 
 
       // Write the 3D coordinates of the selected point and its corresponding 2D projection onto the image plane
-      pointsAndProjections << h3Dpoint(0) << " " << h3Dpoint(1) << " " << h3Dpoint(2) << " ";
-      pointsAndProjections << proyX << " " << proyY << "\n";
+      output3DpointsFile << pIdx << " " << h3Dpoint(0) << " " << h3Dpoint(1) << " " << h3Dpoint(2) << "\n"; //pIdx X Y Z
+      outputProjectionsFile << pIdx << " " << proyX << " " << proyY << "\n";                                //pIdx x y
     }
     pointIndexesFile.close();
-    pointsAndProjections.close();
+    output3DpointsFile.close();
+    outputProjectionsFile.close();
   }
  
+  //Open a file to save the camera parameters and image properties
+  std::ofstream outputCameraFile(outputCameraParametersFileName.c_str());
+  if (!outputCameraFile.is_open())
+  {
+    cout << "Unable to open output file " << outputCameraParametersFileName << std::endl;
+    return EXIT_FAILURE;
+  }
+  outputCameraFile << yaw         << " " << pitch    << " " << roll      << " " 
+                   << tx          << " " << ty       << " " << tz        << " "
+                   << focalLength << " " << cx       << " " << cy        << " " 
+                   << ratio       << " " << imgWidth << " " << imgHeight << " " << std::endl; 
+  outputCameraFile.close();
+
   // Write the image to file
   vtkSmartPointer<vtkImageCast> castFilter =
       vtkSmartPointer<vtkImageCast>::New();
