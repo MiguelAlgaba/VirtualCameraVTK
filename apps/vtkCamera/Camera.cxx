@@ -34,6 +34,26 @@
 #include <vtkImageCanvasSource2D.h>
 #include <vtkImageCast.h>
 
+void printUsage(char *argv[])
+{
+    std::cout << "Usage: " << argv[0] << " <mesh.ply> yaw pitch roll tx ty tz f cx cy r indexes width height [<output_image.jpg>]" << std::endl;
+    std::cout << "    <mesh.ply>  : mesh file .ply" << std::endl;
+    std::cout << "    yaw         : camera rotation around Z axis [rad]" << std::endl;
+    std::cout << "    pitch       : camera rotation around Y axis [rad]" << std::endl;
+    std::cout << "    roll        : camera rotation around X axis [rad]" << std::endl;
+    std::cout << "    tx          : camera translation in the X axis [cm]" << std::endl;
+    std::cout << "    ty          : camera translation in the Y axis [cm]" << std::endl; 
+    std::cout << "    tz          : camera translation in the Z axis [cm]" << std::endl; 
+    std::cout << "    f           : focal length [cm] > 0" << std::endl; 
+    std::cout << "    cx          : X camera principal point [pixels]" << std::endl;
+    std::cout << "    cy          : Y camera principal point [pixels]" << std::endl;
+    std::cout << "    r           : world to image ratio [pixels/cm]" << std::endl;  
+    std::cout << "    indexes     : 3D points indexes file name" << std::endl; 
+    std::cout << "    width       : output image width [pixels]" << std::endl;  
+    std::cout << "    height      : output image height [pixels]" << std::endl;
+    std::cout << "    <image.jpg> : output image file name .jpg [optional]" << std::endl; 
+}
+
 void display3DPointAndIndex(const vtkSmartPointer<vtkRenderer> & renderer,
                             const double x,const double y,const double z,unsigned int pIdx)
 {
@@ -73,7 +93,6 @@ void display3DPointAndIndex(const vtkSmartPointer<vtkRenderer> & renderer,
     txtActor->SetOrientation(180,0,0);
     txtActor->GetProperty()->SetColor(0,0,1);
     renderer->AddActor(txtActor);
-
 }
 
 int main(int argc, char *argv[])
@@ -84,10 +103,10 @@ int main(int argc, char *argv[])
 
   // Parse command line arguments
   if(argc < 15 || argc > 16)
-    {
-    std::cout << "Usage: " << argv[0] << " <mesh.ply> (mesh file .ply) yaw pitch roll (camera rotation [rad]) tx ty tz (camera translation [cm]) f (focal length [cm] > 0) cx (X camera principal point [pixels]) cy (Y camera principal point [pixels]) r (world to image ratio [pixels/cm]) indexes (points indexes file name) width (output image width [pixels]) height (output image height [pixels]) [<output_image.jpg> (output image file name .jpg)]" << std::endl;
+  {
+    printUsage(argv);                                  
     return EXIT_FAILURE;
-    }
+  }
 
   // Read the mesh from (.ply) file
   std::string filename = argv[1];
@@ -256,6 +275,13 @@ int main(int argc, char *argv[])
   std::ifstream pointIndexesFile (pointIndexesFileName.c_str());
   if (pointIndexesFile.is_open())
   {
+    std::ofstream pointsAndProjections ("points3DAndProjections2D");
+    if (!pointsAndProjections.is_open())
+    {
+      cout << "Unable to open output file";
+      return EXIT_FAILURE;
+    }
+
     while ( pointIndexesFile.good())
     {
       // Read the next point index from file
@@ -272,7 +298,7 @@ int main(int argc, char *argv[])
       // Get the 3D coordinates of the selected point
       double p[3];
       polydata->GetPoint(pIdx,p);
-      std::cout << "3D coordinates " << pIdx << " : (" << p[0] << " " << p[1] << " " << p[2] << ")" << std::endl;
+      //std::cout << "3D coordinates " << pIdx << " : (" << p[0] << " " << p[1] << " " << p[2] << ")" << std::endl;
     
       // Display the selected point in 3D
       display3DPointAndIndex(renderer,p[0],p[1],p[2],pIdx);
@@ -282,15 +308,20 @@ int main(int argc, char *argv[])
       Eigen::Vector3d h2Dpoint = projectionMatrix*h3Dpoint;
       double proyX=h2Dpoint(0)/h2Dpoint(2);
       double proyY=h2Dpoint(1)/h2Dpoint(2);
-      std::cout<<"2D projection " << pIdx << " : (" << proyX 
-                                           << " " << proyY << ")" << std::endl;
+      //std::cout<<"2D projection " << pIdx << " : (" << proyX 
+      //                                     << " " << proyY << ")" << std::endl;
 
       // Draw the projected point into the image
       imageSource->DrawCircle(proyX,imgHeight-proyY,5);
       imageSource->DrawPoint(proyX,imgHeight-proyY);
       imageSource->Update(); 
+
+      // Write the 3D coordinates of the selected point and its corresponding 2D projection onto the image plane
+      pointsAndProjections << h3Dpoint(0) << " " << h3Dpoint(1) << " " << h3Dpoint(2) << " ";
+      pointsAndProjections << proyX << " " << proyY << "\n";
     }
     pointIndexesFile.close();
+    pointsAndProjections.close();
   }
  
   // Write the image to file

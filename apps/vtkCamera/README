@@ -1,7 +1,22 @@
 Execution:
 ----------
 
-./Camera Filename(.obj) yaw pitch roll (camera rotation [rad]) tx ty tz (camera translation [cm]) f (focal length [cm] > 0) cx (X camera principal point [pixels]) cy (Y camera principal point [pixels]) r (pixel/cm) indexes (points indexes file name) width (output image width [pixels]) height (output image height [pixels]) [<output_image.jpg> (output image file name .jpg)]
+Usage: ./Camera <mesh.ply> yaw pitch roll tx ty tz f cx cy r indexes width height [<output_image.jpg>]
+    <mesh.ply>  : mesh file .ply
+    yaw         : camera rotation around Z axis [rad]
+    pitch       : camera rotation around Y axis [rad]
+    roll        : camera rotation around X axis [rad]
+    tx          : camera translation in the X axis [cm]
+    ty          : camera translation in the Y axis [cm]
+    tz          : camera translation in the Z axis [cm]
+    f           : focal length [cm] > 0
+    cx          : X camera principal point [pixels]
+    cy          : Y camera principal point [pixels]
+    r           : world to image ratio [pixels/cm]
+    indexes     : 3D points indexes file name
+    width       : output image width [pixels]
+    height      : output image height [pixels]
+    <image.jpg> : output image file name .jpg [optional]
 
 # Frontal view (e.g)
 ./Camera <mesh.obj> 0 0 0 0 0 -200 3.5 640 480 400 <point_indexes> 1280 960
@@ -12,4 +27,17 @@ Execution:
 # Left lateral view (e.g)
 ./Camera <mesh.obj> 0 -1.5707 0 200 0 0 3.5 640 480 400 <point_indexes> 1280 960
 
+Output:
+-------
 
+- An image of the specified size with the 2D projections of the selected 3D points.
+- A text file with the 3D world coordinates of the selected points and their 2D projections onto the image plane. The file has the following structure:
+
+Xi Yi Zi xi yi (one line per point)
+ 
+    - World reference frame:  X points right
+                              Y points down
+                              Z points forward
+    - Camera reference frame: x points right
+                              y points down
+                              z points forward
