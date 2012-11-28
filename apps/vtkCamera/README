@@ -22,13 +22,13 @@ Usage: ./Camera <mesh.ply> yaw pitch roll tx ty tz f cx cy r indexes points proj
     <image.jpg> : output image file name .jpg [optional]
 
 # Frontal view (e.g)
-./Camera <mesh.obj> 0 0 0 0 0 -200 3.5 640 480 400 point_indexes_front points3D projections2D_0 camera_0 1280 960
+./Camera <mesh.ply> 0 0 0 0 0 -200 3.5 640 480 400 point_indexes_front points3D projections2D_0 camera_0 1280 960
 
 # Right lateral view (e.g)
-./Camera <mesh.obj> 0 1.5707 0 -200 0 0 3.5 640 480 400 point_indexes_right points3D projections2D_1 camera_1 1280 960
+./Camera <mesh.ply> 0 1.5707 0 -200 0 0 3.5 640 480 400 point_indexes_right points3D projections2D_1 camera_1 1280 960
 
 # Left lateral view (e.g)
-./Camera <mesh.obj> 0 -1.5707 0 200 0 0 3.5 640 480 400 point_indexes_left points3D projections2D_2 camera_2 1280 960
+./Camera <mesh.ply> 0 -1.5707 0 200 0 0 3.5 640 480 400 point_indexes_left points3D projections2D_2 camera_2 1280 960
 
 Output:
 -------
